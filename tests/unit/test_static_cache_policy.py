@@ -158,7 +158,9 @@ async def test_avatar_tool_static_files_rejects_a_stale_digest(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_avatar_tool_static_files_serves_the_exact_verified_file_bytes(tmp_path):
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+@pytest.mark.parametrize("pathsend", [False, True])
+async def test_avatar_tool_static_files_serves_the_exact_verified_file_bytes(tmp_path, method, pathsend):
     tool_id = "local-12345678-1234-4123-8123-123456789abc"
     static_files = AvatarToolStaticFiles(directory=tmp_path, check_dir=False)
     verified_content = b"verified-content"
@@ -167,11 +169,12 @@ async def test_avatar_tool_static_files_serves_the_exact_verified_file_bytes(tmp
     asset.write_bytes(verified_content)
     scope = {
         "type": "http",
-        "method": "GET",
+        "method": method,
         "path": f"/{tool_id}/default.png",
         "root_path": "",
         "query_string": f"v={hashlib.sha256(verified_content).hexdigest()}".encode("ascii"),
         "headers": [],
+        "extensions": {"http.response.pathsend": {}} if pathsend else {},
     }
 
     response = await static_files.get_response(f"{tool_id}/default.png", scope)
@@ -179,7 +182,9 @@ async def test_avatar_tool_static_files_serves_the_exact_verified_file_bytes(tmp
     messages = await _render_response(response, scope)
 
     assert messages[0]["status"] == 200
-    assert b"".join(message.get("body", b"") for message in messages[1:]) == verified_content
+    assert all(message["type"] != "http.response.pathsend" for message in messages)
+    expected_body = b"" if method == "HEAD" else verified_content
+    assert b"".join(message.get("body", b"") for message in messages[1:]) == expected_body
 
 
 @pytest.mark.asyncio

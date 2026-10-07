@@ -25,4 +25,18 @@ describe('SmartTextBlock', () => {
     expect(screen.getByText('python')).toBeInTheDocument();
     expect(container.querySelector('.katex')).not.toBeNull();
   });
+
+  it.each([
+    '# Message\n<img src="x" onerror="alert(1)">',
+    '# Message\n[click](javascript:alert%281%29)',
+    String.raw`$\href{javascript:alert(1)}{click}$`,
+    String.raw`$\htmlStyle{background-image:url(javascript:alert(1))}{x}$`,
+  ])('keeps untrusted markdown and math inert: %s', (text) => {
+    const { container } = render(<SmartTextBlock text={text} />);
+
+    expect(container.querySelector('[data-render-mode="markdown"]')).not.toBeNull();
+    expect(container.querySelector('script, iframe, [onerror], [onclick]')).toBeNull();
+    expect(container.querySelector('[href^="javascript:"], [src^="javascript:"]')).toBeNull();
+    expect(container.querySelector('[style*="javascript:"]')).toBeNull();
+  });
 });
