@@ -1768,7 +1768,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "dashscope", specifier = "==1.27.7" },
     { name = "dxcam", marker = "sys_platform == 'win32'" },
-    { name = "fastapi", specifier = ">=0.115.9,<0.142.0" },
+    { name = "fastapi", specifier = ">=0.141.1,<0.142.0" },
     { name = "faster-whisper", marker = "extra == 'local-asr'", specifier = ">=1.1.0" },
     { name = "filelock", specifier = ">=3.16" },
     { name = "google-genai", specifier = ">=1.56.0" },

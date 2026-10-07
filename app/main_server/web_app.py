@@ -138,9 +138,9 @@ class _VerifiedAssetFileResponse(FileResponse):
             ranges, boundary, file_size, self.headers["content-type"]
         )
         body = b"".join(
-            header(start, end) + self._verified_content[start:end] + b"\n"
+            header(start, end) + self._verified_content[start:end] + b"\r\n"
             for start, end in ranges
-        ) + f"\n--{boundary}--\n".encode("latin-1")
+        ) + f"--{boundary}--".encode("latin-1")
         self.headers["content-type"] = f"multipart/byteranges; boundary={boundary}"
         self.headers["content-length"] = str(len(body))
         await send({"type": "http.response.start", "status": 206, "headers": self.raw_headers})

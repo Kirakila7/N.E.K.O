@@ -1,4 +1,7 @@
 import hashlib
+import re
+from email.parser import BytesParser
+from email.policy import default
 
 import pytest
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -239,6 +242,14 @@ async def test_avatar_tool_verified_response_preserves_multiple_ranges(tmp_path)
     assert len(body) == int(headers[b"content-length"])
     assert headers[b"content-type"].startswith(b"multipart/byteranges; boundary=")
     assert b"content-range" not in headers
+    assert re.search(rb"(?<!\r)\n", body) is None
+    assert body.endswith(b"--")
+    envelope = b"Content-Type: " + headers[b"content-type"] + b"\r\n\r\n" + body
+    parsed = BytesParser(policy=default).parsebytes(envelope)
+    assert parsed.is_multipart()
+    parts = list(parsed.iter_parts())
+    assert [part.get_payload(decode=True) for part in parts] == [b"01", b"45"]
+    assert [part["Content-Range"] for part in parts] == ["bytes 0-1/10", "bytes 4-5/10"]
 
 
 @pytest.mark.asyncio
@@ -287,9 +298,8 @@ async def test_avatar_tool_rejects_an_unversioned_request_outright(tmp_path):
 
     # 拒绝发生在任何 range 解析之前，所以这条路进不了 StaticFiles.get_response()
     # ——这个 handler 从不调用 super().get_response()，未版本化请求要么 404，要么
-    # 什么都不是。这一点很重要：Starlette 0.46.2 的 FileResponse._parse_range_header
-    # 没有 range 数量上限（max_ranges 是后来才加的），真让它接手，17 条 range 就会
-    # 绕过本模块的 _MAX_RANGE_SPECS，连同受管理的大小上限和内容核验一起绕过。
+    # 什么都不是。直接拒绝无版本参数的请求，避免回落到原生响应而绕过
+    # 本模块的 16 段范围限制、受管理的大小上限和内容核验。
     # 已核验的那条路径由 test_avatar_tool_verified_response_rejects_excessive_range_specs
     # 用同样的 17 条 range 钉住 416。
     with pytest.raises(StarletteHTTPException) as raised:
