@@ -61,6 +61,13 @@ def test_credentials_and_agent_guides_render_with_real_templates(pages_client, p
 def test_monitor_viewer_renders_with_real_templates(monkeypatch):
     from app import monitor, monitor_auth
 
+    async def no_cleanup():
+        pass
+
+    # Keep the real lifespan and rendering, without changing global loggers or
+    # leaving the production cleanup loop running in this rendering test.
+    monkeypatch.setattr(monitor, "install_monitor_log_redaction", lambda: None)
+    monkeypatch.setattr(monitor, "cleanup_disconnected_clients", no_cleanup)
     monkeypatch.setattr(monitor_auth, "MONITOR_TOKEN", "template-smoke-secret")
     with TestClient(monitor.app) as client:
         response = client.get(
